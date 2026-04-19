@@ -57,9 +57,18 @@ Any deviation **= HARD FAIL** with an explicit error delivered to the Principal.
 ### 3.2 Memory
 - Retrieve from Postgres **and** `memory/campaign_memory.json` **before**
   planning.
+- Retrieval is **semantic** by default — pgvector + Voyage AI embeddings
+  (`voyage-3`, 1024-dim). The orchestrator embeds a retrieval query
+  composed of client id, vertical, markets, and notes, then returns the
+  top-k most similar entries filtered by `client_id`, `market_id`,
+  `channel`, and `kind`.
+- Falls back to recency-based listing when `VOYAGE_API_KEY` is unset,
+  the query is empty, or no entries have embeddings yet.
 - Empty memory → set `first_run=true`, seed an empty file, produce a
   reduced-confidence plan (never halt).
-- Inject memory into planner context.
+- New entries are embedded on insert so they are immediately retrievable;
+  pre-existing unembedded rows backfill via `pnpm memory:backfill`.
+- Inject retrieved entries into planner context.
 - Update **after** execution **and** after reporting.
 
 ### 3.3 Validation

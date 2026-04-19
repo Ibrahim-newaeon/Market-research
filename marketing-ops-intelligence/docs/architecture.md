@@ -71,6 +71,20 @@ research ×4  ───┘                                                     �
                                                  memory_update
 ```
 
+## 3.5 Memory retrieval (Voyage + pgvector)
+
+`core/memory/semantic_retrieve.ts` implements k-nearest-neighbour search
+over `campaign_memory.embedding` (1024-dim, cosine). Entries are embedded
+with Voyage AI's `voyage-3` model (`core/memory/embeddings.ts`) on insert
+and at backfill time (`pnpm memory:backfill`). The pipeline's phase 1
+composes a retrieval query from client id + vertical + markets + notes,
+pre-fetches the top-k, and hands them to `memory_retrieval_agent` as
+structured input — the LLM no longer sifts raw history.
+
+Fallback: when `VOYAGE_API_KEY` is unset, query is empty, or no entries
+are embedded yet, `semanticRetrieve` transparently falls back to
+recency-based listing. `first_run=true` propagates unchanged.
+
 ## 4. Security boundaries
 
 | Boundary | Enforcement |

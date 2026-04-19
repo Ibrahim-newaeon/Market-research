@@ -32,6 +32,7 @@ import {
 import { sendWhatsApp } from "../whatsapp/send";
 import { logger } from "../utils/logger";
 import { ClientProfile, ResolvedClientContext } from "../schemas";
+import { semanticRetrieve } from "../memory/semantic_retrieve";
 
 const ROOT = path.resolve(__dirname, "..", "..");
 const CLIENTS_DIR = path.join(ROOT, "config", "clients");
@@ -136,10 +137,34 @@ export async function runPhases0to4(opts: RunOptions): Promise<RunResult> {
     resolved_client_context_ref: `memory/context/${runId}/resolved_client.json`,
   };
 
-  // ─── Phase 1: memory retrieval ─────────────────────────────────────
+  // ─── Phase 1: memory retrieval (semantic pre-retrieval then agent shape) ─
+  // Build a retrieval query from the client brief + markets + vertical
+  // so Voyage + pgvector returns only entries relevant to this run.
+  const retrievalQuery = [
+    `client=${opts.client_id}`,
+    `vertical=${resolved.client.vertical}`,
+    `markets=${resolved.selected_markets.join(",")}`,
+    resolved.client.notes ?? "",
+  ]
+    .filter((s) => s.length > 0)
+    .join(" | ");
+
+  const semanticHits = await semanticRetrieve({
+    query: retrievalQuery,
+    client_id: opts.client_id,
+    market_ids: resolved.selected_markets,
+    k: 20,
+  });
+  logger.info({
+    msg: "phase_1_semantic_prefetch",
+    run_id: runId,
+    hits: semanticHits.length,
+    retrieval: semanticHits[0]?.retrieval ?? "none",
+  });
+
   const memResult = await dispatchAgent("memory_retrieval_agent", {
     runId,
-    input: baseInput,
+    input: { ...baseInput, prefetched_entries: semanticHits, retrieval_query: retrievalQuery },
     outputKind: "memory_context",
   });
   logger.info({ msg: "phase_1_complete", run_id: runId });
