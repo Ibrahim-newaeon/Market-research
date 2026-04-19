@@ -1,6 +1,6 @@
 ---
 name: gulf-markets
-description: Auto-fire whenever planning, allocating, creating campaigns, scheduling, or reviewing compliance for KSA, Kuwait, Qatar, UAE, or Jordan. Encodes regulator rules, payment rails, platform penetration, Ramadan / Hajj / national-day windows, and market-specific creative norms. Never soft-codes regulated claims.
+description: Auto-fire ONLY when ResolvedClientContext.selected_markets intersects {SA, KW, QA, AE, JO}. Encodes regulator rules, payment rails, platform penetration, Ramadan / Hajj / national-day windows, and market-specific creative norms for the Gulf. Never soft-codes regulated claims. Do NOT fire for non-Gulf clients — those use their own region skill (add as needed).
 ---
 
 # gulf-markets

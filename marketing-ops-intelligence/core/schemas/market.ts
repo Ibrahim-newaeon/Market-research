@@ -5,10 +5,22 @@
 import { z } from "zod";
 
 // ─── Enums ───────────────────────────────────────────────────────────
-export const Country = z.enum(["SA", "KW", "QA", "AE", "JO"]);
+// Country is an ISO-3166-1 alpha-2 code. The Zod check is permissive at
+// parse time (any well-formed two-letter uppercase code is accepted);
+// the actual allow-list is enforced per-client by the orchestrator
+// against `ClientProfile.allowed_countries`. This is what enables
+// auto-selecting markets per client without a closed global enum.
+export const Country = z
+  .string()
+  .regex(/^[A-Z]{2}$/, "ISO-3166-1 alpha-2 country code (uppercase)");
 export type Country = z.infer<typeof Country>;
 
-export const Language = z.enum(["ar", "en", "ar+en"]);
+// Language uses BCP-47-style primary subtags (lowercase 2-3 letters).
+// The composite "ar+en" form is preserved for bilingual markets that
+// ship every customer-facing surface in both languages.
+export const Language = z
+  .string()
+  .regex(/^([a-z]{2,3})(\+[a-z]{2,3})?$/, "BCP-47 lowercase primary subtag, optional +secondary");
 export type Language = z.infer<typeof Language>;
 
 export const Channel = z.enum([

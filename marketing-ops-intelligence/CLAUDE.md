@@ -8,15 +8,22 @@
 
 ## 1. Mission
 
-Replace an in-house marketing team for Gulf markets (KSA, Kuwait, Qatar, UAE,
-Jordan) across paid (Meta, Google, Snap, TikTok) and free (SEO, GEO, AEO,
-email, organic social, PR) channels. The system is a phase-gated, multi-agent
+Replace an in-house marketing team across paid (Meta, Google, Snap, TikTok)
+and free (SEO, GEO, AEO, email, organic social, PR) channels for **any
+registered client**. The set of target markets is **not hardcoded** — it is
+auto-selected from the client's profile (`config/clients/<client_id>.json`)
+by the `client_resolver_agent` (phase 0). Gulf clients (KSA, Kuwait, Qatar,
+UAE, Jordan) are supported via their profile; clients in other regions are
+supported by adding a profile. The system is a phase-gated, multi-agent
 pipeline with a mandatory human approval gate between planning and execution.
 
 ---
 
 ## 2. Hard flow — strict order, no deviation
 
+0. `client_resolver_agent` — loads the client profile, validates it, pins
+   `selected_markets[]` for the run. **Required first.** Without its
+   `ResolvedClientContext`, no other agent runs.
 1. `memory_retrieval`
 2. Research agents (parallel): `market_research`, `competitor_intel`,
    `audience_insights`, `keyword_research`
@@ -24,7 +31,8 @@ pipeline with a mandatory human approval gate between planning and execution.
    `budget_optimizer`
 4. `approval_manager` validation
 5. **HUMAN APPROVAL GATE** (48-hour timeout)
-6. Optional `legal_review_gate` (regulated verticals only)
+6. Optional `legal_review_gate` (regulated verticals OR
+   `client.regulated === true`)
 7. Execution agents in parallel: `meta`, `google`, `snap`, `tiktok`, `seo`,
    `geo`, `aeo`
 8. Monitoring: `anomaly_detection`, `performance`
@@ -59,20 +67,56 @@ Any deviation **= HARD FAIL** with an explicit error delivered to the Principal.
 - Invalid → auto-reject + retry once → escalate to Principal.
 - Critical missing data → STOP + WhatsApp alert (`tpl_anomaly_detected`).
 
-### 3.4 Multi-market schema (mandatory)
+### 3.4 Client-driven multi-market schema (mandatory)
+
+Markets are **never hardcoded**. They are resolved per run from the client
+profile by `client_resolver_agent` (phase 0). The schema below is enforced
+by Zod; the **list of allowed countries** is enforced by the orchestrator
+against `ResolvedClientContext.selected_markets`.
+
 ```ts
+// config/clients/<client_id>.json (validated by core/schemas/client.ts)
+ClientProfile {
+  client_id: string;                  // lowercase slug
+  name: string;
+  vertical: "ecommerce" | "saas" | "fintech" | "edtech" | "healthtech"
+          | "real_estate" | "travel" | "fmcg" | "automotive" | "media" | "other";
+  regulated: boolean;                 // true → forces legal_review phase
+  allowed_countries: ISO3166Alpha2[]; // closed allow-list per client
+  default_markets: ISO3166Alpha2[];   // used when CLI doesn't override
+  country_defaults: Array<{
+    country: ISO3166Alpha2;
+    display_name: string;
+    language: BCP47;                  // e.g. "ar", "en", "ar+en"
+    default_dialect?: string;
+    default_channels: Channel[];
+    payment_rails: string[];
+    currency: ISO4217;                // e.g. "SAR", "AED"
+  }>;
+  default_total_budget_usd: number;
+  principal?: { phone_ar?: E164; phone_en?: E164; preferred_language?: "ar"|"en"; };
+  notes: string;
+}
+
+// Per run, downstream agents receive Market[] derived from the profile:
 markets: Array<{
   market_id: string;
-  country: "SA" | "KW" | "QA" | "AE" | "JO";
-  language: "ar" | "en" | "ar+en";
+  country: ISO3166Alpha2;             // MUST be in selected_markets
+  language: BCP47;                    // from country_defaults
   budget_usd: number;
-  channels: Array<"meta"|"google"|"snap"|"tiktok"|"seo"|"geo"|"aeo"|"email"|"organic_social"|"pr">;
+  channels: Channel[];
   seo_strategy:  { target_keywords: string[]; content_plan: string[] };
   geo_strategy:  { target_engines: Array<"chatgpt"|"perplexity"|"claude"|"gemini">; target_prompts: string[] };
   aeo_strategy:  { target_surfaces: Array<"ai_overview"|"featured_snippet"|"people_also_ask">; schema_types: string[] };
   kpis: Array<{ name: string; target: number; unit: string }>;
 }>
 ```
+
+**Enforcement:**
+- Orchestrator rejects any agent emission whose `country` is not in
+  `ResolvedClientContext.selected_markets`.
+- `--markets` CLI override must be a subset of `client.allowed_countries`.
+- `country_defaults` must cover every entry in `allowed_countries`.
 
 ### 3.5 Attribution (locked)
 - 7-day click / 1-day view across all paid channels.
@@ -137,10 +181,11 @@ markets: Array<{
 
 ---
 
-## 4. Agent roster (22)
+## 4. Agent roster (23)
 
 | # | Agent | Model | Tools |
 |---|---|---|---|
+| 0 | client_resolver_agent | sonnet | Read, Write |
 | 1 | orchestrator | opus | Read, Write, Bash |
 | 2 | memory_retrieval_agent | sonnet | Read, Bash |
 | 3 | memory_update_agent | sonnet | Write, Bash |
@@ -199,6 +244,9 @@ markets: Array<{
 ---
 
 ## 8. Operational checklist (verify before first run)
+- [ ] Client profile exists at `config/clients/<client_id>.json` and parses
+- [ ] `client_resolver_agent` runs first (phase 0)
+- [ ] `selected_markets` enforced — no agent introduces unauthorized country
 - [ ] Memory retrieved before planning
 - [ ] Multi-market segmentation enforced
 - [ ] Dashboard tabs fully mapped (Zod contract)
