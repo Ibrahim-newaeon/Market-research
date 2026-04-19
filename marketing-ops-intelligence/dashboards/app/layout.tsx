@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { TabNav } from "@/components/TabNav";
+import { ApprovalSidebar } from "@/components/ApprovalSidebar";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -28,9 +29,12 @@ export default function RootLayout({
             <TabNav />
           </div>
         </header>
-        <main className="container py-6" role="main" data-testid="main">
-          {children}
-        </main>
+        <div className="container flex gap-6 py-6">
+          <ApprovalSidebar />
+          <main className="min-w-0 flex-1" role="main" data-testid="main">
+            {children}
+          </main>
+        </div>
       </body>
     </html>
   );

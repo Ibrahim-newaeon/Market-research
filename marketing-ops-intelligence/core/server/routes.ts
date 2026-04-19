@@ -201,6 +201,83 @@ export function mountRoutes(app: Express): void {
   });
 
   // ─── Dashboard (read-only) ─────────────────────────────────────────
+  // Sidebar context — lists registered clients, the currently-pending
+  // approval (if any), and recent runs. Read-only, safe to expose at
+  // the same auth posture as /api/dashboard. Principal phone numbers
+  // and full ClientProfile remain behind requireAuth on /api/clients.
+  app.get("/api/dashboard/context", (_req, res) => {
+    const clients: Array<{
+      id: string;
+      name: string;
+      vertical: string;
+      regulated: boolean;
+      markets_count: number;
+    }> = [];
+    if (fs.existsSync(CLIENTS_DIR)) {
+      for (const f of fs.readdirSync(CLIENTS_DIR)) {
+        if (!f.endsWith(".json") || f.startsWith("_")) continue;
+        try {
+          const p = JSON.parse(fs.readFileSync(path.join(CLIENTS_DIR, f), "utf8")) as {
+            client_id?: string;
+            name?: string;
+            vertical?: string;
+            regulated?: boolean;
+            allowed_countries?: string[];
+          };
+          if (p.client_id && p.name) {
+            clients.push({
+              id: p.client_id,
+              name: p.name,
+              vertical: p.vertical ?? "other",
+              regulated: p.regulated ?? false,
+              markets_count: (p.allowed_countries ?? []).length,
+            });
+          }
+        } catch {
+          /* skip unreadable */
+        }
+      }
+    }
+
+    const state = readApprovalState();
+    const pending =
+      state && state.status === "ready_for_human_review"
+        ? {
+            run_id: state.run_id,
+            client_id: state.client_id,
+            plan_version: state.plan_version,
+            status: state.status,
+            expires_at: state.timeout.expires_at,
+            requires_legal_review: state.requires_legal_review,
+            created_at: state.created_at,
+          }
+        : null;
+
+    // Recent plans — read memory/plans/<run_id>/ directory names.
+    const plansRoot = path.join(MEMORY, "plans");
+    const recent_runs: Array<{ run_id: string; mtime_ms: number }> = [];
+    if (fs.existsSync(plansRoot)) {
+      const entries = fs.readdirSync(plansRoot, { withFileTypes: true });
+      for (const d of entries) {
+        if (!d.isDirectory()) continue;
+        const full = path.join(plansRoot, d.name);
+        try {
+          recent_runs.push({ run_id: d.name, mtime_ms: fs.statSync(full).mtimeMs });
+        } catch {
+          /* skip */
+        }
+      }
+    }
+    recent_runs.sort((a, b) => b.mtime_ms - a.mtime_ms);
+
+    res.json({
+      clients,
+      pending_approval: pending,
+      recent_runs: recent_runs.slice(0, 10),
+      ts: new Date().toISOString(),
+    });
+  });
+
   app.get("/api/dashboard", (_req, res) => {
     const latest = findLatestDashboard();
     if (!latest) return res.json({ status: "empty", reason: "no_run_completed_yet" });

@@ -41,3 +41,32 @@ export async function getDashboard(): Promise<DashboardPayload | EmptyDashboard>
 export async function getTab(tab: TabSlug): Promise<TabData | EmptyDashboard> {
   return request<TabData | EmptyDashboard>(`/api/dashboard/${tab}`);
 }
+
+export interface DashboardContextClient {
+  id: string;
+  name: string;
+  vertical: string;
+  regulated: boolean;
+  markets_count: number;
+}
+
+export interface DashboardContextPending {
+  run_id: string;
+  client_id: string;
+  plan_version: string;
+  status: "ready_for_human_review";
+  expires_at: string;
+  requires_legal_review: boolean;
+  created_at: string;
+}
+
+export interface DashboardContext {
+  clients: DashboardContextClient[];
+  pending_approval: DashboardContextPending | null;
+  recent_runs: Array<{ run_id: string; mtime_ms: number }>;
+  ts: string;
+}
+
+export async function getDashboardContext(): Promise<DashboardContext> {
+  return request<DashboardContext>("/api/dashboard/context");
+}
