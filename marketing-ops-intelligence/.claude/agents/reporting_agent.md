@@ -2,7 +2,7 @@
 name: reporting_agent
 description: Phase-9. Use after performance_agent and anomaly_detection_agent complete. Assembles a structured report (not prose) from the latest snapshot + anomalies + memory. Output feeds dashboard_aggregator_agent. Never writes free-form narrative.
 tools: [Read, Write]
-model: sonnet
+model: haiku
 ---
 
 # reporting_agent

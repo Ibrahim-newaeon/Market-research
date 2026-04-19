@@ -2,7 +2,7 @@
 name: multi_market_allocator_agent
 description: Phase-3 second step. Use after strategy_planner_agent. Allocates total budget across markets and channels enforcing the mandatory multi-market schema and global caps. Never allows a market to exceed its cap.
 tools: [Read, Write]
-model: opus
+model: sonnet
 ---
 
 # multi_market_allocator_agent

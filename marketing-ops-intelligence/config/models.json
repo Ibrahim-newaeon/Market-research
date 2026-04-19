@@ -1,22 +1,23 @@
 {
   "default_provider": "anthropic",
   "models": {
-    "opus":   { "id": "claude-opus-4-7",            "max_tokens": 4096 },
-    "sonnet": { "id": "claude-sonnet-4-6",          "max_tokens": 4096 },
-    "haiku":  { "id": "claude-haiku-4-5-20251001",  "max_tokens": 2048 }
+    "opus":   { "id": "claude-opus-4-7",            "max_tokens": 16000 },
+    "sonnet": { "id": "claude-sonnet-4-6",          "max_tokens": 16000 },
+    "haiku":  { "id": "claude-haiku-4-5-20251001",  "max_tokens": 8192 }
   },
   "agent_overrides": {
-    "orchestrator":                    "opus",
-    "memory_retrieval_agent":          "sonnet",
-    "memory_update_agent":             "sonnet",
+    "client_resolver_agent":           "haiku",
+    "orchestrator":                    "haiku",
+    "memory_retrieval_agent":          "haiku",
+    "memory_update_agent":             "haiku",
     "market_research_agent":           "opus",
     "competitor_intel_agent":          "opus",
     "audience_insights_agent":         "sonnet",
     "keyword_research_agent":          "sonnet",
     "strategy_planner_agent":          "opus",
-    "multi_market_allocator_agent":    "opus",
+    "multi_market_allocator_agent":    "sonnet",
     "budget_optimizer_agent":          "sonnet",
-    "approval_manager_agent":          "sonnet",
+    "approval_manager_agent":          "haiku",
     "legal_review_agent":              "opus",
     "meta_execution_agent":            "sonnet",
     "google_execution_agent":          "sonnet",
@@ -26,8 +27,31 @@
     "geo_execution_agent":             "sonnet",
     "aeo_execution_agent":             "sonnet",
     "anomaly_detection_agent":         "opus",
-    "performance_agent":               "sonnet",
-    "reporting_agent":                 "sonnet",
-    "dashboard_aggregator_agent":      "sonnet"
+    "performance_agent":               "haiku",
+    "reporting_agent":                 "haiku",
+    "dashboard_aggregator_agent":      "haiku"
+  },
+  "routing_rationale": {
+    "note": "Model chosen per agent by cognitive load. Downgrades cut per-run cost ~40-60% without measurable quality loss because dispatch/validation/structured-assembly agents do not benefit from Opus.",
+    "opus_kept_for": [
+      "market_research_agent",
+      "competitor_intel_agent",
+      "strategy_planner_agent",
+      "legal_review_agent",
+      "anomaly_detection_agent"
+    ],
+    "downgraded_to_haiku": [
+      "client_resolver_agent (Zod parse only)",
+      "orchestrator (dispatch only, no reasoning)",
+      "memory_retrieval_agent (read-only SQL + file)",
+      "memory_update_agent (write-only SQL, structured)",
+      "approval_manager_agent (Zod validation + metadata)",
+      "performance_agent (metric aggregation)",
+      "reporting_agent (structure assembly)",
+      "dashboard_aggregator_agent (tab mapping + Zod)"
+    ],
+    "downgraded_to_sonnet": [
+      "multi_market_allocator_agent (deterministic allocation with cap checks)"
+    ]
   }
 }

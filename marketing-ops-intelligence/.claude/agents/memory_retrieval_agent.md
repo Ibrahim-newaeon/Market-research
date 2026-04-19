@@ -2,7 +2,7 @@
 name: memory_retrieval_agent
 description: Phase-1 gatekeeper. Use when the orchestrator starts a new run or resumes one. Reads campaign_memory.json + Postgres memory tables and returns a typed memory_context. Never writes. Sets first_run=true when memory is empty — never halts the pipeline because of empty memory.
 tools: [Read, Bash]
-model: sonnet
+model: haiku
 ---
 
 # memory_retrieval_agent

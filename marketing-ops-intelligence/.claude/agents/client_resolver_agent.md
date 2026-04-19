@@ -2,7 +2,7 @@
 name: client_resolver_agent
 description: Phase-0 gatekeeper. Use FIRST on every pipeline run, before memory_retrieval_agent. Loads the client profile from config/clients/<client_id>.json, validates it against the ClientProfile schema, and emits the ResolvedClientContext that fixes the market list for the rest of the run. Never invents a client. Never lets a downstream agent introduce a country outside allowed_countries.
 tools: [Read, Write]
-model: sonnet
+model: haiku
 ---
 
 # client_resolver_agent

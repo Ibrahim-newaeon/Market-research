@@ -2,7 +2,7 @@
 name: memory_update_agent
 description: Phase-11 writer. Use after execution completes and after reporting. Persists learnings, benchmarks, and decisions to campaign_memory.json AND Postgres. Never reads from external sources — consumes only structured outputs from prior agents.
 tools: [Write, Bash]
-model: sonnet
+model: haiku
 ---
 
 # memory_update_agent

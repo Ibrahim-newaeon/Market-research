@@ -2,7 +2,7 @@
 name: performance_agent
 description: Phase-8 parallel monitoring. Use after execution begins. Pulls normalized metrics from Meta, Google, Snap, TikTok, GA4, SEO analytics, GEO citation tracker, AEO snapshot store into a unified structure. Feeds anomaly_detection_agent and reporting_agent.
 tools: [Read, Write, Bash]
-model: sonnet
+model: haiku
 ---
 
 # performance_agent

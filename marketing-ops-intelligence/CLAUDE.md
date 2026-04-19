@@ -183,20 +183,24 @@ markets: Array<{
 
 ## 4. Agent roster (23)
 
+Model chosen per agent by cognitive load — dispatch / validation /
+structured assembly go to Haiku; synthesis + reasoning keep Opus. See
+`config/models.json` → `routing_rationale`.
+
 | # | Agent | Model | Tools |
 |---|---|---|---|
-| 0 | client_resolver_agent | sonnet | Read, Write |
-| 1 | orchestrator | opus | Read, Write, Bash |
-| 2 | memory_retrieval_agent | sonnet | Read, Bash |
-| 3 | memory_update_agent | sonnet | Write, Bash |
+| 0 | client_resolver_agent | haiku | Read, Write |
+| 1 | orchestrator | haiku | Read, Write, Bash |
+| 2 | memory_retrieval_agent | haiku | Read, Bash |
+| 3 | memory_update_agent | haiku | Write, Bash |
 | 4 | market_research_agent | opus | Read, Write, WebSearch, WebFetch |
 | 5 | competitor_intel_agent | opus | Read, Write, WebSearch, WebFetch |
 | 6 | audience_insights_agent | sonnet | Read, Write, WebSearch |
 | 7 | keyword_research_agent | sonnet | Read, Write, WebSearch |
 | 8 | strategy_planner_agent | opus | Read, Write |
-| 9 | multi_market_allocator_agent | opus | Read, Write |
+| 9 | multi_market_allocator_agent | sonnet | Read, Write |
 | 10 | budget_optimizer_agent | sonnet | Read, Write |
-| 11 | approval_manager_agent | sonnet | Read, Write |
+| 11 | approval_manager_agent | haiku | Read, Write |
 | 12 | legal_review_agent | opus | Read, Write |
 | 13 | meta_execution_agent | sonnet | Read, Write, Bash |
 | 14 | google_execution_agent | sonnet | Read, Write, Bash |
@@ -206,8 +210,8 @@ markets: Array<{
 | 18 | geo_execution_agent | sonnet | Read, Write |
 | 19 | aeo_execution_agent | sonnet | Read, Write |
 | 20 | anomaly_detection_agent | opus | Read, Write, Bash |
-| 21 | performance_agent | sonnet | Read, Write, Bash |
-| 22 | reporting_agent / dashboard_aggregator_agent | sonnet | Read, Write |
+| 21 | performance_agent | haiku | Read, Write, Bash |
+| 22 | reporting_agent / dashboard_aggregator_agent | haiku | Read, Write |
 
 ---
 

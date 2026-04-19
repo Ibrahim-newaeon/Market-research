@@ -2,7 +2,7 @@
 name: orchestrator
 description: Root controller for the phase-gated pipeline. Use when the Principal runs /run_full_pipeline, /generate_plan_only, /approve_plan, /edit_plan, or /decline_plan. Use when any other agent needs routing. Never plans, researches, or executes directly — only dispatches to subordinate agents and enforces the 12-phase flow.
 tools: [Read, Write, Bash]
-model: opus
+model: haiku
 ---
 
 # orchestrator

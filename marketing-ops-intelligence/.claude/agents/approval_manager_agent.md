@@ -2,7 +2,7 @@
 name: approval_manager_agent
 description: Phase-4 gatekeeper. Use after budget_optimizer_agent emits the strategy plan. Validates plan against Zod schema, attaches metadata, flips status to ready_for_human_review, and hands off to the WhatsApp gate. Never bypasses validation.
 tools: [Read, Write]
-model: sonnet
+model: haiku
 ---
 
 # approval_manager_agent

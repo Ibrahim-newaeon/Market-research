@@ -2,7 +2,7 @@
 name: dashboard_aggregator_agent
 description: Phase-10. Use after reporting_agent emits StructuredReport. Validates the report against the dashboard Zod contract, maps every field to exactly one of the 8 tabs, and writes the JSON payload consumed by /get_dashboard_data. Halts if any tab is empty without justification.
 tools: [Read, Write]
-model: sonnet
+model: haiku
 ---
 
 # dashboard_aggregator_agent
