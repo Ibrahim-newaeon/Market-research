@@ -1,0 +1,33 @@
+{
+  "default_provider": "anthropic",
+  "models": {
+    "opus":   { "id": "claude-opus-4-7",            "max_tokens": 4096 },
+    "sonnet": { "id": "claude-sonnet-4-6",          "max_tokens": 4096 },
+    "haiku":  { "id": "claude-haiku-4-5-20251001",  "max_tokens": 2048 }
+  },
+  "agent_overrides": {
+    "orchestrator":                    "opus",
+    "memory_retrieval_agent":          "sonnet",
+    "memory_update_agent":             "sonnet",
+    "market_research_agent":           "opus",
+    "competitor_intel_agent":          "opus",
+    "audience_insights_agent":         "sonnet",
+    "keyword_research_agent":          "sonnet",
+    "strategy_planner_agent":          "opus",
+    "multi_market_allocator_agent":    "opus",
+    "budget_optimizer_agent":          "sonnet",
+    "approval_manager_agent":          "sonnet",
+    "legal_review_agent":              "opus",
+    "meta_execution_agent":            "sonnet",
+    "google_execution_agent":          "sonnet",
+    "snap_execution_agent":            "sonnet",
+    "tiktok_execution_agent":          "sonnet",
+    "seo_execution_agent":             "sonnet",
+    "geo_execution_agent":             "sonnet",
+    "aeo_execution_agent":             "sonnet",
+    "anomaly_detection_agent":         "opus",
+    "performance_agent":               "sonnet",
+    "reporting_agent":                 "sonnet",
+    "dashboard_aggregator_agent":      "sonnet"
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "version": "1.0.0",
+  "note": "Regulator rule set used by legal_review_agent. Never soft-code regulated claims; refer to the named authority and URL at review time.",
+  "verticals": {
+    "medical": {
+      "SA": {
+        "regulators": [
+          { "name": "SFDA", "url": "https://sfda.gov.sa" },
+          { "name": "GAHAR", "url": "https://gahar.sa" }
+        ],
+        "blocked_phrases": ["guaranteed cure", "100% safe", "clinically proven"],
+        "required": ["practitioner license number displayed", "side-effects disclaimer AR+EN"]
+      },
+      "AE": {
+        "regulators": [
+          { "name": "MoHAP", "url": "https://mohap.gov.ae" },
+          { "name": "DHA",   "url": "https://dha.gov.ae" },
+          { "name": "DoH",   "url": "https://doh.gov.ae" }
+        ],
+        "blocked_phrases": ["guaranteed cure", "miracle"],
+        "required": ["DHA/DoH licence number", "disclaimer AR+EN"]
+      },
+      "KW": { "regulators": [{ "name": "MoH Kuwait", "url": "https://moh.gov.kw" }], "blocked_phrases": [], "required": ["licence number"] },
+      "QA": { "regulators": [{ "name": "MoPH Qatar",  "url": "https://moph.gov.qa" }], "blocked_phrases": [], "required": ["licence number"] },
+      "JO": { "regulators": [{ "name": "FDA-JO",      "url": "https://jfda.jo"    }], "blocked_phrases": [], "required": ["licence number"] }
+    },
+    "financial": {
+      "SA": {
+        "regulators": [{ "name": "SAMA", "url": "https://sama.gov.sa" }, { "name": "CMA", "url": "https://cma.org.sa" }],
+        "blocked_phrases": ["guaranteed returns", "risk-free"],
+        "required": ["SAMA licence number", "risk disclosure AR+EN"]
+      },
+      "AE": {
+        "regulators": [{ "name": "CBUAE", "url": "https://centralbank.ae" }, { "name": "SCA", "url": "https://sca.gov.ae" }],
+        "blocked_phrases": ["guaranteed returns"],
+        "required": ["CBUAE/SCA licence", "risk disclosure AR+EN"]
+      },
+      "KW": { "regulators": [{ "name": "CBK", "url": "https://cbk.gov.kw" }], "blocked_phrases": ["guaranteed returns"], "required": ["CBK licence"] },
+      "QA": { "regulators": [{ "name": "QCB", "url": "https://qcb.gov.qa" }], "blocked_phrases": ["guaranteed returns"], "required": ["QCB licence"] },
+      "JO": { "regulators": [{ "name": "CBJ", "url": "https://cbj.gov.jo" }], "blocked_phrases": ["guaranteed returns"], "required": ["CBJ licence"] }
+    },
+    "alcohol": {
+      "SA": { "forbidden": true, "reason": "Alcohol advertising prohibited in KSA" },
+      "KW": { "forbidden": true, "reason": "Alcohol advertising prohibited in Kuwait" },
+      "QA": { "forbidden": true, "reason": "Alcohol advertising prohibited in Qatar" },
+      "AE": { "regulators": [{ "name": "NMC", "url": "https://nmc.gov.ae" }], "blocked_phrases": ["youth imagery"], "required": ["licence", "age-gate", "permitted-emirates only"] },
+      "JO": { "regulators": [{ "name": "JMC", "url": "https://jmc.jo" }], "blocked_phrases": ["youth imagery"], "required": ["licence", "age-gate"] }
+    },
+    "real_estate": {
+      "AE": { "regulators": [{ "name": "RERA Dubai", "url": "https://dld.gov.ae" }, { "name": "DMT Abu Dhabi", "url": "https://dmt.gov.ae" }], "blocked_phrases": [], "required": ["RERA/DMT registration number on off-plan", "developer name visible"] },
+      "SA": { "regulators": [{ "name": "REGA", "url": "https://rega.gov.sa" }, { "name": "WAFI", "url": "https://wafi.housing.sa" }], "blocked_phrases": [], "required": ["WAFI registration on off-plan"] },
+      "KW": { "regulators": [{ "name": "PAHW", "url": "https://pahw.gov.kw" }], "blocked_phrases": [], "required": [] },
+      "QA": { "regulators": [{ "name": "Min. of Municipality", "url": "https://mme.gov.qa" }], "blocked_phrases": [], "required": [] },
+      "JO": { "regulators": [{ "name": "DLS", "url": "https://dls.gov.jo" }], "blocked_phrases": [], "required": [] }
+    },
+    "crypto": {
+      "SA": { "forbidden": true, "reason": "Crypto marketing banned in KSA" },
+      "KW": { "forbidden": true, "reason": "Crypto marketing restricted in KW" },
+      "AE": { "regulators": [{ "name": "VARA", "url": "https://vara.ae" }], "blocked_phrases": ["guaranteed returns", "risk-free"], "required": ["VARA licence", "risk disclosure"] },
+      "QA": { "forbidden": true, "reason": "Crypto restricted in QA" },
+      "JO": { "regulators": [{ "name": "CBJ", "url": "https://cbj.gov.jo" }], "blocked_phrases": ["guaranteed returns"], "required": ["risk disclosure"] }
+    }
+  }
+}

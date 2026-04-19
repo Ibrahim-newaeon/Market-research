@@ -1,0 +1,88 @@
+{
+  "version": "1.0.0",
+  "currency": "USD",
+  "global_cap_usd": 500000,
+  "per_run_cap_usd": 150000,
+  "per_market": {
+    "SA": {
+      "market_cap_usd": 80000,
+      "channels": {
+        "meta":   { "cap_usd": 35000 },
+        "google": { "cap_usd": 30000 },
+        "snap":   { "cap_usd": 20000 },
+        "tiktok": { "cap_usd": 20000 },
+        "seo":    { "cap_usd": 5000 },
+        "geo":    { "cap_usd": 5000 },
+        "aeo":    { "cap_usd": 5000 },
+        "email":  { "cap_usd": 2000 },
+        "organic_social": { "cap_usd": 2000 },
+        "pr":     { "cap_usd": 5000 }
+      }
+    },
+    "KW": {
+      "market_cap_usd": 40000,
+      "channels": {
+        "meta":   { "cap_usd": 15000 },
+        "google": { "cap_usd": 12000 },
+        "snap":   { "cap_usd": 10000 },
+        "tiktok": { "cap_usd": 10000 },
+        "seo":    { "cap_usd": 3000 },
+        "geo":    { "cap_usd": 3000 },
+        "aeo":    { "cap_usd": 3000 },
+        "email":  { "cap_usd": 1500 },
+        "organic_social": { "cap_usd": 1500 },
+        "pr":     { "cap_usd": 3000 }
+      }
+    },
+    "QA": {
+      "market_cap_usd": 35000,
+      "channels": {
+        "meta":   { "cap_usd": 15000 },
+        "google": { "cap_usd": 12000 },
+        "snap":   { "cap_usd": 8000 },
+        "tiktok": { "cap_usd": 8000 },
+        "seo":    { "cap_usd": 3000 },
+        "geo":    { "cap_usd": 3000 },
+        "aeo":    { "cap_usd": 3000 },
+        "email":  { "cap_usd": 1500 },
+        "organic_social": { "cap_usd": 1500 },
+        "pr":     { "cap_usd": 3000 }
+      }
+    },
+    "AE": {
+      "market_cap_usd": 70000,
+      "channels": {
+        "meta":   { "cap_usd": 30000 },
+        "google": { "cap_usd": 30000 },
+        "snap":   { "cap_usd": 15000 },
+        "tiktok": { "cap_usd": 18000 },
+        "seo":    { "cap_usd": 5000 },
+        "geo":    { "cap_usd": 5000 },
+        "aeo":    { "cap_usd": 5000 },
+        "email":  { "cap_usd": 2500 },
+        "organic_social": { "cap_usd": 2500 },
+        "pr":     { "cap_usd": 5000 }
+      }
+    },
+    "JO": {
+      "market_cap_usd": 25000,
+      "channels": {
+        "meta":   { "cap_usd": 10000 },
+        "google": { "cap_usd": 9000 },
+        "snap":   { "cap_usd": 5000 },
+        "tiktok": { "cap_usd": 8000 },
+        "seo":    { "cap_usd": 2500 },
+        "geo":    { "cap_usd": 2500 },
+        "aeo":    { "cap_usd": 2500 },
+        "email":  { "cap_usd": 1000 },
+        "organic_social": { "cap_usd": 1000 },
+        "pr":     { "cap_usd": 2000 }
+      }
+    }
+  },
+  "rules": {
+    "paid_requires_tracking_verified": true,
+    "default_campaign_status": "PAUSED",
+    "attribution": { "click_days": 7, "view_days": 1, "exclude_existing_customers": true }
+  }
+}
