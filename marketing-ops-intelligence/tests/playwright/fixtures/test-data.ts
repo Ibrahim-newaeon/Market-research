@@ -2,7 +2,10 @@
  * Deterministic fixtures for Playwright specs.
  * All values align with the Zod schemas in core/schemas/.
  */
+import fs from "node:fs";
+import path from "node:path";
 import { randomUUID } from "node:crypto";
+import type { ClientProfile, ResolvedClientContext } from "../../../core/schemas";
 
 export function uuid(): string {
   return randomUUID();
@@ -10,6 +13,38 @@ export function uuid(): string {
 
 export function iso(offsetHours = 0): string {
   return new Date(Date.now() + offsetHours * 3_600_000).toISOString();
+}
+
+/** Load a fixture client profile from tests/playwright/fixtures/clients/. */
+export function loadClientFixture(id = "test-gulf"): ClientProfile {
+  const p = path.resolve(__dirname, "clients", `${id}.json`);
+  return JSON.parse(fs.readFileSync(p, "utf8")) as ClientProfile;
+}
+
+/**
+ * Build a ResolvedClientContext for a given fixture. Mirrors what
+ * client_resolver_agent emits in phase 0; specs can pass this directly
+ * to downstream agent contracts instead of hardcoding markets.
+ */
+export function resolvedFromFixture(
+  id = "test-gulf",
+  override?: Array<ClientProfile["allowed_countries"][number]>
+): ResolvedClientContext {
+  const client = loadClientFixture(id);
+  const selected = override ?? client.default_markets;
+  const allow = new Set(client.allowed_countries);
+  for (const c of selected) {
+    if (!allow.has(c)) throw new Error(`market '${c}' not in allowed_countries`);
+  }
+  const defaults = client.country_defaults.filter((d) => selected.includes(d.country));
+  return {
+    resolved_at: iso(),
+    client,
+    selected_markets: selected,
+    selected_country_defaults: defaults,
+    selection_source: override ? "cli_override" : "client_default",
+    missing_data: [],
+  };
 }
 
 export function threeMarketPlan(): Record<string, unknown> {
@@ -80,6 +115,70 @@ export function threeMarketPlan(): Record<string, unknown> {
         ...shared,
       },
     ],
+  };
+}
+
+/**
+ * Build a StrategyPlan-shaped payload from a ResolvedClientContext.
+ * Budgets are split evenly across selected markets and across the
+ * first 2-3 default channels — enough for schema parse tests without
+ * replicating budget_optimizer_agent logic.
+ */
+export function planFromProfile(
+  ctx: ReturnType<typeof resolvedFromFixture>,
+  total_budget_usd = 90_000
+): Record<string, unknown> {
+  const perMarket = Math.floor(total_budget_usd / ctx.selected_markets.length);
+  const shared = {
+    seo_strategy: { target_keywords: ["kw1", "kw2"], content_plan: ["pillar_1"] },
+    geo_strategy: {
+      target_engines: ["chatgpt", "perplexity", "claude", "gemini"],
+      target_prompts: ["best X in market"],
+    },
+    aeo_strategy: {
+      target_surfaces: ["ai_overview", "featured_snippet", "people_also_ask"],
+      schema_types: ["FAQPage", "HowTo"],
+    },
+    kpis: [{ name: "CPA", target: 25, unit: "USD" }],
+  };
+  const markets = ctx.selected_country_defaults.map((d, idx) => {
+    const picks = d.default_channels.slice(0, 2); // first 2 channels
+    const chanBudget = Math.floor(perMarket / picks.length);
+    // Adjust last channel to reconcile to perMarket exactly.
+    const channels = picks.map((channel, i) => ({
+      channel,
+      budget_usd:
+        i === picks.length - 1 ? perMarket - chanBudget * (picks.length - 1) : chanBudget,
+      pct_of_market: 1 / picks.length,
+      rationale: "fixture-derived",
+      cap_ref: `config/budgets.json:per_market.${d.country}.channels.${channel}`,
+    }));
+    return {
+      market_id: `${d.country}-m${idx + 1}`,
+      country: d.country,
+      language: d.language,
+      budget_usd: perMarket,
+      channels,
+      regulated: false,
+      ...shared,
+    };
+  });
+  return {
+    run_id: uuid(),
+    version: "0.1.0",
+    produced_at: iso(),
+    status: "pending_approval",
+    first_run: false,
+    total_budget_usd: perMarket * ctx.selected_markets.length,
+    optimization: {
+      method: "pass_through",
+      iterations: 0,
+      objective: "maximize_expected_conversions",
+      expected_outcomes: [],
+    },
+    assumptions: [],
+    missing_data: [],
+    markets,
   };
 }
 
