@@ -1,6 +1,10 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    # Postgres 16 with pgvector pre-installed. Required by
+    # core/db/migrations/0002_pgvector.sql (semantic memory retrieval).
+    # On managed Postgres (RDS/Aurora/Cloud SQL), enable pgvector in
+    # the parameter group instead.
+    image: pgvector/pgvector:pg16
     container_name: moi_postgres
     restart: unless-stopped
     environment:

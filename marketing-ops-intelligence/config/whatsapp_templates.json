@@ -1,0 +1,87 @@
+{
+  "version": "1.0.0",
+  "note": "Template names MUST match pre-approved templates in Meta Business Manager. Do not add a template here without the BM approval flow.",
+  "templates": [
+    {
+      "name": "tpl_research_complete",
+      "category": "UTILITY",
+      "description": "Phase-2 research reports ready for internal review.",
+      "languages": {
+        "ar": { "status": "approved", "body_params": 1 },
+        "en": { "status": "approved", "body_params": 1 }
+      }
+    },
+    {
+      "name": "tpl_plan_ready",
+      "category": "UTILITY",
+      "description": "Plan is ready for the Principal's approval.",
+      "languages": {
+        "ar": { "status": "approved", "body_params": 3 },
+        "en": { "status": "approved", "body_params": 3 }
+      }
+    },
+    {
+      "name": "tpl_plan_approved",
+      "category": "UTILITY",
+      "description": "Principal approved the plan; execution unlocked.",
+      "languages": {
+        "ar": { "status": "approved", "body_params": 2 },
+        "en": { "status": "approved", "body_params": 2 }
+      }
+    },
+    {
+      "name": "tpl_plan_declined",
+      "category": "UTILITY",
+      "description": "Principal declined the plan; run terminated.",
+      "languages": {
+        "ar": { "status": "approved", "body_params": 1 },
+        "en": { "status": "approved", "body_params": 1 }
+      }
+    },
+    {
+      "name": "tpl_legal_review_required",
+      "category": "UTILITY",
+      "description": "Regulated vertical detected; /approve_legal required.",
+      "languages": {
+        "ar": { "status": "approved", "body_params": 2 },
+        "en": { "status": "approved", "body_params": 2 }
+      }
+    },
+    {
+      "name": "tpl_execution_started",
+      "category": "UTILITY",
+      "description": "A channel execution agent has created campaigns (PAUSED).",
+      "languages": {
+        "ar": { "status": "approved", "body_params": 2 },
+        "en": { "status": "approved", "body_params": 2 }
+      }
+    },
+    {
+      "name": "tpl_execution_complete",
+      "category": "UTILITY",
+      "description": "All seven execution channels emitted completion markers.",
+      "languages": {
+        "ar": { "status": "approved", "body_params": 1 },
+        "en": { "status": "approved", "body_params": 1 }
+      }
+    },
+    {
+      "name": "tpl_anomaly_detected",
+      "category": "UTILITY",
+      "description": "Critical anomaly detected; Principal action recommended.",
+      "languages": {
+        "ar": { "status": "approved", "body_params": 4 },
+        "en": { "status": "approved", "body_params": 4 }
+      }
+    },
+    {
+      "name": "tpl_approval_timeout",
+      "category": "UTILITY",
+      "description": "48-hour approval window expired; run auto-cancelled.",
+      "languages": {
+        "ar": { "status": "approved", "body_params": 1 },
+        "en": { "status": "approved", "body_params": 1 }
+      }
+    }
+  ]
+}

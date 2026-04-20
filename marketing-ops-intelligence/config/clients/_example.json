@@ -1,0 +1,62 @@
+{
+  "client_id": "example-gulf",
+  "name": "Example Gulf Client",
+  "vertical": "ecommerce",
+  "regulated": false,
+  "allowed_countries": ["SA", "KW", "QA", "AE", "JO"],
+  "default_markets": ["SA", "AE"],
+  "country_defaults": [
+    {
+      "country": "SA",
+      "display_name": "Saudi Arabia",
+      "language": "ar+en",
+      "default_dialect": "khaleeji",
+      "default_channels": ["meta", "google", "snap", "tiktok", "seo", "geo", "aeo"],
+      "payment_rails": ["mada", "applepay", "stcpay", "tabby", "tamara"],
+      "currency": "SAR"
+    },
+    {
+      "country": "KW",
+      "display_name": "Kuwait",
+      "language": "ar+en",
+      "default_dialect": "khaleeji",
+      "default_channels": ["meta", "google", "snap", "tiktok", "seo", "geo", "aeo"],
+      "payment_rails": ["knet", "applepay", "tabby"],
+      "currency": "KWD"
+    },
+    {
+      "country": "QA",
+      "display_name": "Qatar",
+      "language": "ar+en",
+      "default_dialect": "khaleeji",
+      "default_channels": ["meta", "google", "tiktok", "seo", "geo", "aeo"],
+      "payment_rails": ["naps", "applepay"],
+      "currency": "QAR"
+    },
+    {
+      "country": "AE",
+      "display_name": "United Arab Emirates",
+      "language": "ar+en",
+      "default_dialect": "khaleeji",
+      "default_channels": ["meta", "google", "tiktok", "seo", "geo", "aeo"],
+      "payment_rails": ["uaewallet", "applepay", "tabby", "tamara"],
+      "currency": "AED"
+    },
+    {
+      "country": "JO",
+      "display_name": "Jordan",
+      "language": "ar",
+      "default_dialect": "levantine",
+      "default_channels": ["meta", "google", "tiktok", "seo", "geo", "aeo"],
+      "payment_rails": ["cliq", "tabby", "madfu"],
+      "currency": "JOD"
+    }
+  ],
+  "default_total_budget_usd": 90000,
+  "principal": {
+    "phone_ar": "+966500000000",
+    "phone_en": "+971500000000",
+    "preferred_language": "ar"
+  },
+  "notes": "Example file — copy to <real-client-id>.json and edit. Keep allowed_countries closed; orchestrator enforces it."
+}

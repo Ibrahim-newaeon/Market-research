@@ -32,12 +32,14 @@ organic social, PR) channels for Gulf markets (KSA, KW, QA, AE, JO).
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-- **22 agents** in `.claude/agents/`
+- **23 agents** in `.claude/agents/` (incl. phase-0 `client_resolver_agent`)
 - **5 auto-firing skills** in `.claude/skills/`
 - **6 slash commands** in `.claude/commands/`
 - **6 hooks** in `.claude/hooks/`
 - **Zod-validated** contracts in `core/schemas/`
 - **Next.js 14 dashboard** with 8 schema-bound tabs
+- **Per-client market selection** — markets come from
+  `config/clients/<client_id>.json`, never hardcoded
 
 ---
 
@@ -52,17 +54,24 @@ cp .env.example .env
 # fill: DATABASE_URL, JWT_SECRET, WA_ACCESS_TOKEN, WA_PHONE_NUMBER_ID,
 #       WA_BUSINESS_ACCOUNT_ID, WA_APP_SECRET, META_*_PIXEL_ID, ...
 
-# 3. Bring up Postgres + app
+# 3. Register a client profile
+cp config/clients/_example.json config/clients/<your-client-id>.json
+# edit: client_id, vertical, allowed_countries, default_markets,
+#       country_defaults[], default_total_budget_usd
+
+# 4. Bring up Postgres + app
 docker compose up -d
 
-# 4. Migrate
+# 5. Migrate + seed
 pnpm db:migrate
-
-# 5. Seed empty campaign memory
 pnpm memory:seed
 
 # 6. Launch Claude Code in this repo
 claude
+
+# 7. Run for a client (markets resolved automatically)
+/run_full_pipeline <your-client-id>
+/run_full_pipeline <your-client-id> --markets SA,AE --budget 120000
 ```
 
 ---
@@ -71,8 +80,8 @@ claude
 
 | Command | Purpose |
 |---|---|
-| `/run_full_pipeline` | Orchestrator runs end-to-end with gates. |
-| `/generate_plan_only` | Stops after Phase 6 (plan ready for review). |
+| `/run_full_pipeline <client_id> [--markets …] [--budget …]` | Resolves client (phase 0), runs pipeline through approval gate. |
+| `/generate_plan_only <client_id> [--markets …] [--budget …]` | Phase 0–4 only; emits plan, no WA, no timer. |
 | `/approve_plan` | Principal approves; unlocks execution. |
 | `/edit_plan <feedback>` | Re-runs planning with feedback. |
 | `/decline_plan <reason>` | Terminates pipeline, logs, WA-notifies. |

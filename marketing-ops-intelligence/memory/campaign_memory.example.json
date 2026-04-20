@@ -1,0 +1,8 @@
+{
+  "version": "1.0.0",
+  "note": "Example file. Actual memory/campaign_memory.json is created by `pnpm memory:seed` and is gitignored.",
+  "first_run": true,
+  "entries": [],
+  "benchmarks": {},
+  "prior_decisions": []
+}

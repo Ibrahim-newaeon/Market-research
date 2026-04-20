@@ -1,0 +1,50 @@
+{
+  "version": "1.0.0",
+  "rules": {
+    "spend_pacing": {
+      "half_day": {
+        "upper": 1.30,
+        "lower": 0.50,
+        "severity_on_upper_breach": "warn",
+        "severity_on_lower_breach": "warn"
+      }
+    },
+    "cpa": {
+      "benchmark_multiplier_steady": 1.5,
+      "benchmark_multiplier_first_run": 2.0,
+      "severity": "critical"
+    },
+    "ctr": {
+      "min_by_channel": {
+        "meta": 0.005,
+        "tiktok": 0.005,
+        "snap": 0.004,
+        "google": 0.01
+      },
+      "severity": "warn"
+    },
+    "cvr": {
+      "min_sustained": 0.0025,
+      "window_minutes": 120,
+      "severity": "warn"
+    },
+    "pixel_health": {
+      "max_mismatch_pct": 0.15,
+      "severity": "critical"
+    },
+    "disapprovals": {
+      "any": true,
+      "severity": "critical"
+    },
+    "budget_depletion": {
+      "remaining_pct_threshold": 0.20,
+      "hours_in_window_threshold": 12,
+      "severity": "warn"
+    }
+  },
+  "notification": {
+    "critical_template": "tpl_anomaly_detected",
+    "warn_batches_per_report": true,
+    "never_auto_pause": true
+  }
+}
