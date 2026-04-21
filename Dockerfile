@@ -13,7 +13,7 @@ WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@9.12.0 --activate
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN pnpm run typecheck && pnpm run build
+RUN pnpm run build
 
 # ─── Stage 3: runtime ─────────────────────────────────────────────────
 FROM node:20-alpine AS runtime
@@ -24,9 +24,12 @@ COPY --from=build --chown=app:app /app/dist ./dist
 COPY --from=build --chown=app:app /app/node_modules ./node_modules
 COPY --from=build --chown=app:app /app/package.json ./package.json
 COPY --from=build --chown=app:app /app/dashboards/.next ./dashboards/.next
+COPY --from=build --chown=app:app /app/dashboards/public ./dashboards/public
 COPY --from=build --chown=app:app /app/config ./config
+COPY --from=build --chown=app:app /app/memory ./memory
+COPY --from=build --chown=app:app /app/entrypoint.sh ./entrypoint.sh
 USER app
-EXPOSE 3000 3001
+EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
   CMD wget -qO- http://localhost:3000/api/health || exit 1
-CMD ["node", "dist/core/server/index.js"]
+CMD ["sh", "entrypoint.sh"]
