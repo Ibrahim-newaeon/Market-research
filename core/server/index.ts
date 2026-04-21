@@ -11,6 +11,7 @@
  *   5. routes
  *   6. errorHandler
  */
+import http from "node:http";
 import express, { type Request, type Response, type NextFunction } from "express";
 import { helmetStrict, apiRateLimit, errorHandler } from "../auth/middleware";
 import { mountRoutes } from "./routes";
@@ -18,6 +19,7 @@ import { startTimerPoller } from "../orchestrator/timer";
 import { logger } from "../utils/logger";
 
 const PORT = Number(process.env.PORT ?? 3000);
+const DASHBOARD_PORT = Number(process.env.DASHBOARD_PORT ?? 3001);
 
 function rawBodyCapture(req: Request & { rawBody?: Buffer }, _res: Response, next: NextFunction): void {
   if (!req.path.startsWith("/api/webhooks/")) {
@@ -45,13 +47,37 @@ export function createApp(): express.Express {
   const app = express();
   app.disable("x-powered-by");
   app.use(rawBodyCapture);
-  app.use(helmetStrict);
-  app.use(apiRateLimit);
-  app.use((req, _res, next) => {
-    if (req.path.startsWith("/api/webhooks/")) return next();
+  // Only apply Helmet CSP, rate limiting, and JSON parsing to /api routes.
+  // Non-API requests are proxied to Next.js which sets its own headers.
+  app.use("/api", helmetStrict);
+  app.use("/api", apiRateLimit);
+  app.use("/api", (req, _res, next) => {
+    if (req.path.startsWith("/webhooks/")) return next();
     express.json({ limit: "2mb" })(req, _res, next);
   });
   mountRoutes(app);
+
+  // Proxy non-API requests to the Next.js dashboard on DASHBOARD_PORT.
+  app.use((req, res) => {
+    const proxyReq = http.request(
+      {
+        hostname: "127.0.0.1",
+        port: DASHBOARD_PORT,
+        path: req.originalUrl,
+        method: req.method,
+        headers: req.headers,
+      },
+      (proxyRes) => {
+        res.writeHead(proxyRes.statusCode ?? 502, proxyRes.headers);
+        proxyRes.pipe(res);
+      },
+    );
+    proxyReq.on("error", () => {
+      res.status(502).send("Dashboard unavailable");
+    });
+    req.pipe(proxyReq);
+  });
+
   app.use(errorHandler);
   return app;
 }
