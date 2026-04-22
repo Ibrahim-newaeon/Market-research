@@ -25,11 +25,17 @@ import {
 import { ClientProfile } from "../schemas";
 import { verifyChallenge, handleWebhook } from "../whatsapp/webhook_handler";
 import { query } from "../db/client";
+import {
+  listClientIds,
+  listClientMetas,
+  getClient,
+  saveClient,
+  listAllProfiles,
+} from "../db/clients";
 import { sendWhatsApp } from "../whatsapp/send";
 
 const ROOT = path.resolve(__dirname, "..", "..");
 const MEMORY = path.join(ROOT, "memory");
-const CLIENTS_DIR = path.join(ROOT, "config", "clients");
 
 const TAB_SLUGS = [
   "overview",
@@ -49,64 +55,62 @@ export function mountRoutes(app: Express): void {
   });
 
   // ─── Clients ───────────────────────────────────────────────────────
-  app.get("/api/clients", (_req, res) => {
-    if (!fs.existsSync(CLIENTS_DIR)) return res.json({ clients: [] });
-    const clients = fs
-      .readdirSync(CLIENTS_DIR)
-      .filter((f) => f.endsWith(".json") && !f.startsWith("_"))
-      .map((f) => f.replace(/\.json$/, ""));
-    res.json({ clients });
+  app.get("/api/clients", async (_req, res) => {
+    try {
+      const ids = await listClientIds();
+      res.json({ clients: ids });
+    } catch (err) {
+      res.status(500).json({ ok: false, code: "clients_read_failed", detail: (err as Error).message });
+    }
   });
 
   // Bulk export — returns every valid ClientProfile as a JSON array.
   // Placed before the ":id" route so "export" isn't treated as an id.
-  app.get("/api/clients/export", (_req, res) => {
-    if (!fs.existsSync(CLIENTS_DIR)) return res.json({ clients: [] });
-    const profiles: unknown[] = [];
-    for (const f of fs.readdirSync(CLIENTS_DIR)) {
-      if (!f.endsWith(".json") || f.startsWith("_")) continue;
-      try {
-        const parsed = ClientProfile.parse(JSON.parse(fs.readFileSync(path.join(CLIENTS_DIR, f), "utf8")));
-        profiles.push(parsed);
-      } catch {
-        /* skip unreadable/invalid */
-      }
+  app.get("/api/clients/export", async (_req, res) => {
+    try {
+      const profiles = await listAllProfiles();
+      res.setHeader(
+        "content-disposition",
+        `attachment; filename="clients-${new Date().toISOString().slice(0, 10)}.json"`
+      );
+      res.json({ clients: profiles, exported_at: new Date().toISOString(), count: profiles.length });
+    } catch (err) {
+      res.status(500).json({ ok: false, code: "clients_export_failed", detail: (err as Error).message });
     }
-    res.setHeader("content-disposition", `attachment; filename="clients-${new Date().toISOString().slice(0, 10)}.json"`);
-    res.json({ clients: profiles, exported_at: new Date().toISOString(), count: profiles.length });
   });
 
-  app.post("/api/clients", (req, res) => {
+  app.post("/api/clients", async (req, res) => {
+    let profile;
     try {
-      const profile = ClientProfile.parse(req.body);
-      if (!fs.existsSync(CLIENTS_DIR)) {
-        fs.mkdirSync(CLIENTS_DIR, { recursive: true });
-      }
-      const file = path.join(CLIENTS_DIR, `${profile.client_id}.json`);
-      const overwrite = String((req.query.overwrite ?? "")).toLowerCase() === "true";
-      if (fs.existsSync(file) && !overwrite) {
-        return res.status(409).json({ ok: false, code: "client_exists", detail: `${profile.client_id} already exists` });
-      }
-      fs.writeFileSync(file, JSON.stringify(profile, null, 2), "utf8");
-      res.status(fs.existsSync(file) && overwrite ? 200 : 201).json({
+      profile = ClientProfile.parse(req.body);
+    } catch (err) {
+      return res.status(422).json({ ok: false, code: "invalid_profile", detail: (err as Error).message });
+    }
+    const overwrite = String(req.query.overwrite ?? "").toLowerCase() === "true";
+    try {
+      const { overwritten } = await saveClient(profile, overwrite);
+      res.status(overwritten ? 200 : 201).json({
         ok: true,
         client_id: profile.client_id,
-        overwritten: overwrite,
+        overwritten,
       });
     } catch (err) {
-      res.status(422).json({ ok: false, code: "invalid_profile", detail: (err as Error).message });
+      const code = (err as Error & { code?: string }).code;
+      if (code === "client_exists") {
+        return res.status(409).json({ ok: false, code, detail: (err as Error).message });
+      }
+      res.status(500).json({ ok: false, code: "clients_write_failed", detail: (err as Error).message });
     }
   });
 
-  app.get("/api/clients/:id", (req, res) => {
-    const file = path.join(CLIENTS_DIR, `${req.params.id}.json`);
-    if (!fs.existsSync(file)) {
-      return res.status(404).json({ ok: false, code: "client_not_found" });
-    }
+  app.get("/api/clients/:id", async (req, res) => {
     try {
-      const parsed = ClientProfile.parse(JSON.parse(fs.readFileSync(file, "utf8")));
+      const profile = await getClient(req.params.id);
+      if (!profile) {
+        return res.status(404).json({ ok: false, code: "client_not_found" });
+      }
       res.setHeader("content-disposition", `attachment; filename="${req.params.id}.json"`);
-      res.json(parsed);
+      res.json(profile);
     } catch (err) {
       res.status(422).json({ ok: false, code: "invalid_profile", detail: (err as Error).message });
     }
@@ -245,38 +249,18 @@ export function mountRoutes(app: Express): void {
   // Sidebar context — lists registered clients, the currently-pending
   // approval (if any), and recent runs. Read-only, safe to expose at
   // the same auth posture as /api/dashboard.
-  app.get("/api/dashboard/context", (_req, res) => {
-    const clients: Array<{
+  app.get("/api/dashboard/context", async (_req, res) => {
+    let clients: Array<{
       id: string;
       name: string;
       vertical: string;
       regulated: boolean;
       markets_count: number;
     }> = [];
-    if (fs.existsSync(CLIENTS_DIR)) {
-      for (const f of fs.readdirSync(CLIENTS_DIR)) {
-        if (!f.endsWith(".json") || f.startsWith("_")) continue;
-        try {
-          const p = JSON.parse(fs.readFileSync(path.join(CLIENTS_DIR, f), "utf8")) as {
-            client_id?: string;
-            name?: string;
-            vertical?: string;
-            regulated?: boolean;
-            allowed_countries?: string[];
-          };
-          if (p.client_id && p.name) {
-            clients.push({
-              id: p.client_id,
-              name: p.name,
-              vertical: p.vertical ?? "other",
-              regulated: p.regulated ?? false,
-              markets_count: (p.allowed_countries ?? []).length,
-            });
-          }
-        } catch {
-          /* skip unreadable */
-        }
-      }
+    try {
+      clients = await listClientMetas();
+    } catch {
+      /* degrade to empty clients list — UI still renders */
     }
 
     const state = readApprovalState();
