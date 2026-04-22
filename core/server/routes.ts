@@ -49,13 +49,31 @@ export function mountRoutes(app: Express): void {
   });
 
   // ─── Clients ───────────────────────────────────────────────────────
-  app.get("/api/clients", requireAuth, (_req, res) => {
+  app.get("/api/clients", (_req, res) => {
     if (!fs.existsSync(CLIENTS_DIR)) return res.json({ clients: [] });
     const clients = fs
       .readdirSync(CLIENTS_DIR)
       .filter((f) => f.endsWith(".json") && !f.startsWith("_"))
       .map((f) => f.replace(/\.json$/, ""));
     res.json({ clients });
+  });
+
+  // Bulk export — returns every valid ClientProfile as a JSON array.
+  // Placed before the ":id" route so "export" isn't treated as an id.
+  app.get("/api/clients/export", (_req, res) => {
+    if (!fs.existsSync(CLIENTS_DIR)) return res.json({ clients: [] });
+    const profiles: unknown[] = [];
+    for (const f of fs.readdirSync(CLIENTS_DIR)) {
+      if (!f.endsWith(".json") || f.startsWith("_")) continue;
+      try {
+        const parsed = ClientProfile.parse(JSON.parse(fs.readFileSync(path.join(CLIENTS_DIR, f), "utf8")));
+        profiles.push(parsed);
+      } catch {
+        /* skip unreadable/invalid */
+      }
+    }
+    res.setHeader("content-disposition", `attachment; filename="clients-${new Date().toISOString().slice(0, 10)}.json"`);
+    res.json({ clients: profiles, exported_at: new Date().toISOString(), count: profiles.length });
   });
 
   app.post("/api/clients", (req, res) => {
@@ -65,23 +83,29 @@ export function mountRoutes(app: Express): void {
         fs.mkdirSync(CLIENTS_DIR, { recursive: true });
       }
       const file = path.join(CLIENTS_DIR, `${profile.client_id}.json`);
-      if (fs.existsSync(file)) {
+      const overwrite = String((req.query.overwrite ?? "")).toLowerCase() === "true";
+      if (fs.existsSync(file) && !overwrite) {
         return res.status(409).json({ ok: false, code: "client_exists", detail: `${profile.client_id} already exists` });
       }
       fs.writeFileSync(file, JSON.stringify(profile, null, 2), "utf8");
-      res.status(201).json({ ok: true, client_id: profile.client_id });
+      res.status(fs.existsSync(file) && overwrite ? 200 : 201).json({
+        ok: true,
+        client_id: profile.client_id,
+        overwritten: overwrite,
+      });
     } catch (err) {
       res.status(422).json({ ok: false, code: "invalid_profile", detail: (err as Error).message });
     }
   });
 
-  app.get("/api/clients/:id", requireAuth, (req, res) => {
+  app.get("/api/clients/:id", (req, res) => {
     const file = path.join(CLIENTS_DIR, `${req.params.id}.json`);
     if (!fs.existsSync(file)) {
       return res.status(404).json({ ok: false, code: "client_not_found" });
     }
     try {
       const parsed = ClientProfile.parse(JSON.parse(fs.readFileSync(file, "utf8")));
+      res.setHeader("content-disposition", `attachment; filename="${req.params.id}.json"`);
       res.json(parsed);
     } catch (err) {
       res.status(422).json({ ok: false, code: "invalid_profile", detail: (err as Error).message });

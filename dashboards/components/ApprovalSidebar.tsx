@@ -1,8 +1,12 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   getDashboardContext,
   runPipeline,
+  getClientProfile,
+  exportAllClients,
+  createClient,
+  downloadJson,
   type DashboardContext,
   type DashboardContextPending,
 } from "@/lib/api";
@@ -79,6 +83,65 @@ export function ApprovalSidebar(): JSX.Element {
       .catch((e) => setErr((e as Error).message));
   };
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [importMsg, setImportMsg] = useState<{ text: string; tone: "ok" | "err" } | null>(null);
+
+  const onDownloadClient = async (clientId: string): Promise<void> => {
+    try {
+      const profile = await getClientProfile(clientId);
+      downloadJson(`${clientId}.json`, profile);
+    } catch (e) {
+      setRunMsg({ id: clientId, text: `download failed: ${(e as Error).message}`, tone: "err" });
+    }
+  };
+
+  const onExportAll = async (): Promise<void> => {
+    try {
+      const data = await exportAllClients();
+      downloadJson(`clients-${new Date().toISOString().slice(0, 10)}.json`, data);
+      setImportMsg({ text: `exported ${data.count} client${data.count === 1 ? "" : "s"}`, tone: "ok" });
+    } catch (e) {
+      setImportMsg({ text: `export failed: ${(e as Error).message}`, tone: "err" });
+    }
+  };
+
+  const onImportFile = async (file: File): Promise<void> => {
+    setImportMsg(null);
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text) as unknown;
+      // Accept either a single ClientProfile or the bulk export shape {clients: [...]}
+      const profiles: unknown[] = Array.isArray((parsed as { clients?: unknown[] })?.clients)
+        ? ((parsed as { clients: unknown[] }).clients)
+        : [parsed];
+
+      let created = 0;
+      let overwritten = 0;
+      const errors: string[] = [];
+      for (const p of profiles) {
+        try {
+          const r = await createClient(p, true);
+          if (r.overwritten) overwritten += 1;
+          else created += 1;
+        } catch (e) {
+          const id = (p as { client_id?: string })?.client_id ?? "?";
+          errors.push(`${id}: ${(e as Error).message}`);
+        }
+      }
+      const parts: string[] = [];
+      if (created) parts.push(`${created} new`);
+      if (overwritten) parts.push(`${overwritten} updated`);
+      if (errors.length) parts.push(`${errors.length} failed`);
+      setImportMsg({
+        text: parts.join(", ") || "nothing imported",
+        tone: errors.length && !created && !overwritten ? "err" : "ok",
+      });
+      load();
+    } catch (e) {
+      setImportMsg({ text: `import failed: ${(e as Error).message}`, tone: "err" });
+    }
+  };
+
   const onRun = async (clientId: string): Promise<void> => {
     setRunningId(clientId);
     setRunMsg(null);
@@ -136,9 +199,61 @@ export function ApprovalSidebar(): JSX.Element {
         )}
       </div>
 
-      <div className="mt-6 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        Clients ({ctx?.clients.length ?? 0})
+      <div className="mt-6 flex items-center justify-between">
+        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Clients ({ctx?.clients.length ?? 0})
+        </div>
+        <div className="flex gap-1">
+          <button
+            type="button"
+            data-testid="sidebar-clients-export-all"
+            onClick={() => void onExportAll()}
+            disabled={!ctx || ctx.clients.length === 0}
+            aria-label="Export all clients"
+            title="Export all clients as JSON"
+            className={cn(
+              "rounded border border-border bg-background px-1.5 py-[2px] text-[10px] font-semibold text-muted-foreground transition hover:bg-muted",
+              "disabled:cursor-not-allowed disabled:opacity-40"
+            )}
+          >
+            Export
+          </button>
+          <button
+            type="button"
+            data-testid="sidebar-clients-import"
+            onClick={() => fileInputRef.current?.click()}
+            aria-label="Import clients from JSON"
+            title="Import clients from a JSON file"
+            className="rounded border border-border bg-background px-1.5 py-[2px] text-[10px] font-semibold text-muted-foreground transition hover:bg-muted"
+          >
+            Import
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            data-testid="sidebar-clients-import-input"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void onImportFile(f);
+              e.target.value = "";
+            }}
+          />
+        </div>
       </div>
+      {importMsg && (
+        <div
+          data-testid="sidebar-clients-import-msg"
+          role="status"
+          className={cn(
+            "mt-1 text-[10px]",
+            importMsg.tone === "ok" ? "text-emerald-700" : "text-destructive"
+          )}
+        >
+          {importMsg.text}
+        </div>
+      )}
       <ul
         data-testid="sidebar-clients"
         className="mt-2 space-y-1 text-xs"
@@ -165,20 +280,32 @@ export function ApprovalSidebar(): JSX.Element {
                   </span>
                 )}
               </div>
-              <button
-                type="button"
-                data-testid={`sidebar-client-run-${c.id}`}
-                onClick={() => void onRun(c.id)}
-                disabled={isRunning || Boolean(ctx?.pending_approval)}
-                aria-label={`Run pipeline for ${c.id}`}
-                className={cn(
-                  "mt-2 w-full rounded-md border px-2 py-1 text-[11px] font-semibold transition",
-                  "border-primary/40 bg-primary/10 text-primary hover:bg-primary/20",
-                  "disabled:cursor-not-allowed disabled:opacity-50"
-                )}
-              >
-                {isRunning ? "Starting…" : ctx?.pending_approval ? "Approval pending" : "Run pipeline"}
-              </button>
+              <div className="mt-2 flex gap-1">
+                <button
+                  type="button"
+                  data-testid={`sidebar-client-run-${c.id}`}
+                  onClick={() => void onRun(c.id)}
+                  disabled={isRunning || Boolean(ctx?.pending_approval)}
+                  aria-label={`Run pipeline for ${c.id}`}
+                  className={cn(
+                    "flex-1 rounded-md border px-2 py-1 text-[11px] font-semibold transition",
+                    "border-primary/40 bg-primary/10 text-primary hover:bg-primary/20",
+                    "disabled:cursor-not-allowed disabled:opacity-50"
+                  )}
+                >
+                  {isRunning ? "Starting…" : ctx?.pending_approval ? "Pending" : "Run"}
+                </button>
+                <button
+                  type="button"
+                  data-testid={`sidebar-client-download-${c.id}`}
+                  onClick={() => void onDownloadClient(c.id)}
+                  aria-label={`Download ${c.id} profile as JSON`}
+                  title="Download profile JSON"
+                  className="rounded-md border border-border bg-background px-2 py-1 text-[11px] font-semibold text-muted-foreground transition hover:bg-muted"
+                >
+                  ↓
+                </button>
+              </div>
               {msg && (
                 <div
                   data-testid={`sidebar-client-run-msg-${c.id}`}
