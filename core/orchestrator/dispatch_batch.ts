@@ -88,10 +88,10 @@ function buildRequest(runId: string, job: BatchJob): BatchRequest {
     2
   );
 
-  const thinking =
-    model.alias === "haiku"
-      ? undefined
-      : ({ type: "adaptive" } as const);
+  // Thinking + forced tool_choice is rejected by the API:
+  //   "Thinking may not be enabled when tool_choice forces tool use."
+  // Mirror the single-shot dispatch path and disable thinking here too.
+  const thinking: undefined = undefined;
 
   const params: Anthropic.MessageCreateParamsNonStreaming = {
     model: model.id,
