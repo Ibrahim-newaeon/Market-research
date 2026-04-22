@@ -29,6 +29,42 @@ import { logger } from "../utils/logger";
 const ROOT = path.resolve(__dirname, "..", "..");
 const MEMORY = path.join(ROOT, "memory");
 
+/**
+ * Recursively strip JSON schema keywords that zod-to-json-schema emits
+ * but Anthropic's tool input_schema rejects. The error surface is:
+ *   tools.0.custom: For 'number' type, properties maximum, minimum are not supported
+ * Also guards against format/pattern keywords that occasionally trip the
+ * validator for generated schemas.
+ */
+const UNSUPPORTED_SCHEMA_KEYS = new Set([
+  "minimum",
+  "maximum",
+  "exclusiveMinimum",
+  "exclusiveMaximum",
+  "multipleOf",
+  "minLength",
+  "maxLength",
+  "minItems",
+  "maxItems",
+  "uniqueItems",
+  "pattern",
+  "format",
+  "default",
+]);
+
+export function sanitizeForAnthropicToolSchema(node: unknown): unknown {
+  if (Array.isArray(node)) return node.map(sanitizeForAnthropicToolSchema);
+  if (node && typeof node === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(node as Record<string, unknown>)) {
+      if (UNSUPPORTED_SCHEMA_KEYS.has(k)) continue;
+      out[k] = sanitizeForAnthropicToolSchema(v);
+    }
+    return out;
+  }
+  return node;
+}
+
 export interface DispatchOptions {
   runId: string;
   input: Record<string, unknown>;   // stringified into the user message
@@ -80,10 +116,12 @@ export async function dispatchAgent<T = unknown>(
       ? (Object.values(jsonSchemaRaw.definitions)[0] as Record<string, unknown>)
       : (jsonSchemaRaw as unknown as Record<string, unknown>);
 
+  const sanitized = sanitizeForAnthropicToolSchema(unwrapped) as Record<string, unknown>;
+
   const tool: Anthropic.Tool = {
     name: "emit_output",
     description: `Emit the ${agentName} output. The input MUST match the agent's contract.`,
-    input_schema: unwrapped as Anthropic.Tool["input_schema"],
+    input_schema: sanitized as Anthropic.Tool["input_schema"],
   };
 
   // Build the user message from the structured input.

@@ -25,7 +25,7 @@ import type { z } from "zod";
 import { getAnthropic, getClaudeMd, resolveModel } from "./anthropic_client";
 import { loadAgent } from "./agent_loader";
 import { getAgentSchema } from "./agent_output_map";
-import { dispatchAgent, type DispatchResult } from "./dispatch";
+import { dispatchAgent, sanitizeForAnthropicToolSchema, type DispatchResult } from "./dispatch";
 import { logger } from "../utils/logger";
 
 const ROOT = path.resolve(__dirname, "..", "..");
@@ -63,10 +63,12 @@ function buildRequest(runId: string, job: BatchJob): BatchRequest {
       ? (Object.values(jsonSchemaRaw.definitions)[0] as Record<string, unknown>)
       : (jsonSchemaRaw as unknown as Record<string, unknown>);
 
+  const sanitized = sanitizeForAnthropicToolSchema(unwrapped) as Record<string, unknown>;
+
   const tool: Anthropic.Tool = {
     name: "emit_output",
     description: `Emit the ${job.agentName} output matching the agent's Zod contract.`,
-    input_schema: unwrapped as Anthropic.Tool["input_schema"],
+    input_schema: sanitized as Anthropic.Tool["input_schema"],
   };
 
   const systemBlocks: Anthropic.TextBlockParam[] = [
