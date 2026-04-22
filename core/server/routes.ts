@@ -14,7 +14,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { Express, Request, Response } from "express";
-import { requireAuth } from "../auth/middleware";
+import { requireAuth, requirePrincipal, loginHandler, logoutHandler } from "../auth/middleware";
 import { runPhases0to4, resumeAfterApproval } from "../orchestrator/pipeline";
 import {
   readApprovalState,
@@ -54,6 +54,16 @@ export function mountRoutes(app: Express): void {
     res.json({ ok: true, ts: new Date().toISOString() });
   });
 
+  // ─── Principal auth (shared-secret) ────────────────────────────────
+  app.get("/api/auth/login", loginHandler);
+  app.post("/api/auth/logout", logoutHandler);
+  app.get("/api/auth/status", (req, res) => {
+    const configured = Boolean(process.env.PRINCIPAL_ACCESS_TOKEN);
+    const enforced = String(process.env.MOI_REQUIRE_PRINCIPAL_TOKEN ?? "").toLowerCase() === "true";
+    // Do not echo token presence from request — just report config posture.
+    res.json({ configured, enforced });
+  });
+
   // ─── Clients ───────────────────────────────────────────────────────
   app.get("/api/clients", async (_req, res) => {
     try {
@@ -79,7 +89,7 @@ export function mountRoutes(app: Express): void {
     }
   });
 
-  app.post("/api/clients", async (req, res) => {
+  app.post("/api/clients", requirePrincipal, async (req, res) => {
     let profile;
     try {
       profile = ClientProfile.parse(req.body);
@@ -117,7 +127,7 @@ export function mountRoutes(app: Express): void {
   });
 
   // ─── Pipeline ──────────────────────────────────────────────────────
-  app.post("/api/pipeline/run", async (req, res) => {
+  app.post("/api/pipeline/run", requirePrincipal, async (req, res) => {
     const body = req.body as {
       client_id?: string;
       markets_override?: string[];
@@ -156,7 +166,7 @@ export function mountRoutes(app: Express): void {
     });
   });
 
-  app.post("/api/approvals/:run_id/approve", async (req, res) => {
+  app.post("/api/approvals/:run_id/approve", requirePrincipal, async (req, res) => {
     const s = readApprovalState();
     if (!s || s.run_id !== req.params.run_id) {
       return res.status(404).json({ ok: false, code: "no_approval_state" });
@@ -181,7 +191,7 @@ export function mountRoutes(app: Express): void {
     res.json(out);
   });
 
-  app.post("/api/approvals/:run_id/edit", async (req, res) => {
+  app.post("/api/approvals/:run_id/edit", requirePrincipal, async (req, res) => {
     const feedback = (req.body as { feedback?: string })?.feedback;
     if (!feedback || feedback.trim().length === 0) {
       return res.status(400).json({ ok: false, code: "feedback_required" });
@@ -207,7 +217,7 @@ export function mountRoutes(app: Express): void {
     res.json({ ok: true, plan_version: s.plan_version });
   });
 
-  app.post("/api/approvals/:run_id/decline", async (req, res) => {
+  app.post("/api/approvals/:run_id/decline", requirePrincipal, async (req, res) => {
     const reason = (req.body as { reason?: string })?.reason;
     if (!reason || reason.trim().length === 0) {
       return res.status(400).json({ ok: false, code: "reason_required" });
