@@ -165,12 +165,12 @@ export async function dispatchAgent<T = unknown>(
     },
   ];
 
-  // Thinking config. Opus 4.7 = adaptive only. Sonnet 4.6 = adaptive.
-  // Haiku 4.5 doesn't accept thinking param — omit for haiku.
-  const thinking =
-    model.alias === "haiku"
-      ? undefined
-      : ({ type: "adaptive" } as const);
+  // Thinking + forced tool_choice is rejected by the API:
+  //   "Thinking may not be enabled when tool_choice forces tool use."
+  // We force `tool_choice: { type: "tool", name: "emit_output" }` to
+  // guarantee a structured emission, so thinking must be off. Leaving
+  // the model-aware skeleton here in case Anthropic relaxes this later.
+  const thinking: undefined = undefined;
 
   const req: Anthropic.MessageCreateParamsNonStreaming = {
     model: model.id,
