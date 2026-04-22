@@ -221,30 +221,89 @@ export async function dispatchAgent<T = unknown>(
   // the model-aware skeleton here in case Anthropic relaxes this later.
   const thinking: undefined = undefined;
 
-  const req: Anthropic.MessageCreateParamsNonStreaming = {
-    model: model.id,
-    max_tokens: Math.min(model.max_tokens, 8192),
-    system: systemBlocks as unknown as Anthropic.MessageCreateParams["system"],
-    // strict omitted — see header comment. Zod re-validates the result.
-    tools: [tool as unknown as Anthropic.Tool],
-    tool_choice: { type: "tool", name: "emit_output" },
-    messages: [{ role: "user", content: userMessage }],
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    ...(thinking ? ({ thinking } as any) : {}),
+  const messages: Anthropic.MessageParam[] = [
+    { role: "user", content: userMessage },
+  ];
+
+  const callOnce = async (): Promise<Anthropic.Message> => {
+    const req: Anthropic.MessageCreateParamsNonStreaming = {
+      model: model.id,
+      max_tokens: Math.min(model.max_tokens, 8192),
+      system: systemBlocks as unknown as Anthropic.MessageCreateParams["system"],
+      // strict omitted — see header comment. Zod re-validates the result.
+      tools: [tool as unknown as Anthropic.Tool],
+      tool_choice: { type: "tool", name: "emit_output" },
+      messages,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      ...(thinking ? ({ thinking } as any) : {}),
+    };
+    return client.messages.create(req);
   };
 
-  const res = await client.messages.create(req);
+  const extractToolUse = (
+    m: Anthropic.Message
+  ): (Anthropic.ToolUseBlock & { input: unknown }) => {
+    const block = m.content.find((b) => b.type === "tool_use") as
+      | (Anthropic.ToolUseBlock & { input: unknown })
+      | undefined;
+    if (!block) {
+      throw new Error(`agent '${agentName}' did not emit a tool_use block`);
+    }
+    return block;
+  };
 
-  // Extract the tool_use block — `tool_choice` guarantees exactly one.
-  const toolUse = res.content.find((b) => b.type === "tool_use") as
-    | (Anthropic.ToolUseBlock & { input: unknown })
-    | undefined;
-  if (!toolUse) {
-    throw new Error(`agent '${agentName}' did not emit a tool_use block`);
+  // First attempt.
+  let res = await callOnce();
+  let toolUse = extractToolUse(res);
+  let parsedResult = schema.safeParse(toolUse.input);
+
+  // One-shot repair loop. With strict:true off, the model can emit a
+  // structurally plausible but schema-invalid object (missing fields,
+  // wrong array/object type for a slot, etc.). Hand the Zod errors back
+  // and ask for a corrected emission.
+  if (!parsedResult.success) {
+    const zodErrors = parsedResult.error.errors
+      .map(
+        (e) =>
+          `- path=${e.path.length ? e.path.join(".") : "<root>"} code=${e.code} message=${e.message}`
+      )
+      .join("\n");
+    logger.warn({
+      msg: "agent_output_invalid_retry",
+      agent: agentName,
+      errors: parsedResult.error.errors,
+    });
+    messages.push({ role: "assistant", content: res.content });
+    messages.push({
+      role: "user",
+      content: [
+        {
+          type: "tool_result",
+          tool_use_id: toolUse.id,
+          is_error: true,
+          content:
+            "Your emit_output input did not match the Zod contract. Validation errors:\n" +
+            zodErrors +
+            "\n\nRe-emit emit_output with a fully-corrected payload that satisfies EVERY required field in the schema. Keep all previously-correct fields; only fix the listed paths. `markets` is an array, not a string. `run_id` and `produced_at` are always required string fields at the top level.",
+        },
+      ],
+    });
+    res = await callOnce();
+    toolUse = extractToolUse(res);
+    parsedResult = schema.safeParse(toolUse.input);
+    if (!parsedResult.success) {
+      throw new Error(
+        `agent '${agentName}' output failed Zod validation twice. Final errors:\n` +
+          parsedResult.error.errors
+            .map(
+              (e) =>
+                `path=${e.path.length ? e.path.join(".") : "<root>"}: ${e.message}`
+            )
+            .join("; ")
+      );
+    }
   }
-
-  // Final Zod gate.
-  const parsed = schema.parse(toolUse.input) as T;
+  const parsed = parsedResult.data as T;
 
   // Persist raw output.
   const outDir = path.join(MEMORY, outputKind, opts.runId);
