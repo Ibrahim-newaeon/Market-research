@@ -33,6 +33,8 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       "content-type": "application/json",
       ...(init?.headers ?? {}),
     },
+    // Include the principal_token cookie on same-origin mutating calls.
+    credentials: typeof window === "undefined" ? "omit" : "same-origin",
     cache: "no-store",
   });
   if (!res.ok) {
@@ -40,6 +42,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     throw new Error(`api ${path} ${res.status}: ${text}`);
   }
   return (await res.json()) as T;
+}
+
+export interface AuthStatus {
+  configured: boolean;
+  enforced: boolean;
+}
+
+export async function getAuthStatus(): Promise<AuthStatus> {
+  return request<AuthStatus>("/api/auth/status");
 }
 
 export async function getDashboard(): Promise<DashboardPayload | EmptyDashboard> {

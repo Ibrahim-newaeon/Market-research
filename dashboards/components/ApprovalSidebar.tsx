@@ -10,6 +10,8 @@ import {
   approveRun,
   editRun,
   declineRun,
+  getAuthStatus,
+  type AuthStatus,
   type DashboardContext,
   type DashboardContextPending,
 } from "@/lib/api";
@@ -169,6 +171,7 @@ export function ApprovalSidebar(): JSX.Element {
   const [err, setErr] = useState<string | null>(null);
   const [runningId, setRunningId] = useState<string | null>(null);
   const [runMsg, setRunMsg] = useState<{ id: string; text: string; tone: "ok" | "err" } | null>(null);
+  const [auth, setAuth] = useState<AuthStatus | null>(null);
 
   const load = (): void => {
     getDashboardContext()
@@ -177,6 +180,18 @@ export function ApprovalSidebar(): JSX.Element {
         setErr(null);
       })
       .catch((e) => setErr((e as Error).message));
+  };
+
+  const onUnlock = (): void => {
+    const token = window.prompt("Principal token:");
+    if (!token) return;
+    const next = typeof window !== "undefined" ? window.location.pathname : "/";
+    window.location.href = `/api/auth/login?token=${encodeURIComponent(token)}&next=${encodeURIComponent(next)}`;
+  };
+
+  const onLogout = async (): Promise<void> => {
+    await fetch("/api/auth/logout", { method: "POST", credentials: "same-origin" }).catch(() => undefined);
+    window.location.reload();
   };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -258,6 +273,7 @@ export function ApprovalSidebar(): JSX.Element {
 
   useEffect(() => {
     load();
+    getAuthStatus().then(setAuth).catch(() => setAuth(null));
     const t = setInterval(load, 30_000); // refresh every 30s
     return () => clearInterval(t);
   }, []);
@@ -268,9 +284,37 @@ export function ApprovalSidebar(): JSX.Element {
       className="hidden w-64 shrink-0 border-r border-border bg-muted/20 p-4 lg:block"
       aria-label="Clients and pending approval"
     >
-      <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        Pipeline state
+      <div className="flex items-center justify-between">
+        <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Pipeline state
+        </div>
+        {auth?.configured && (
+          <button
+            type="button"
+            data-testid="sidebar-auth-toggle"
+            onClick={() => void (auth ? onUnlock() : null)}
+            title="Principal token required for mutating actions"
+            className="rounded border border-border bg-background px-1.5 py-[2px] text-[10px] font-semibold text-muted-foreground hover:bg-muted"
+          >
+            Unlock
+          </button>
+        )}
       </div>
+      {auth?.configured && (
+        <div
+          data-testid="sidebar-auth-note"
+          className="mt-1 text-[10px] text-muted-foreground"
+        >
+          Auth {auth.enforced ? "enforced" : "configured"} — set cookie via Unlock before running pipelines.
+          <button
+            type="button"
+            onClick={() => void onLogout()}
+            className="ml-1 underline hover:text-foreground"
+          >
+            logout
+          </button>
+        </div>
+      )}
 
       {err && (
         <div
